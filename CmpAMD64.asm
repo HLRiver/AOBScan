@@ -16,5 +16,58 @@
 ;
 ;
 
-LIBRARY
-EXPORTS
+    .XLIST
+INCLUDE KSAMD64.INC
+    .LIST
+
+OPTION CASEMAP:NONE
+
+_DATA$00 SEGMENT PAGE 'DATA'
+
+_DATA$00 ENDS
+
+_TEXT$00 SEGMENT PAGE 'CODE'
+
+CmpByte :
+
+    cmp cl, dl
+    setnz al
+    ret
+
+PUBLIC CmpByte
+
+align 40h
+
+CmpShort :
+
+    cmp cx, dx
+    setnz al
+    ret
+
+PUBLIC CmpShort
+
+align 40h
+
+CmpLong :
+
+    cmp ecx, edx
+    setnz al
+    ret
+
+PUBLIC CmpLong
+
+align 40h
+
+CmpLongLong :
+
+    cmp rcx, rdx
+    setnz al
+    ret
+
+PUBLIC CmpLongLong
+
+align 40h
+
+_TEXT$00 ENDS
+
+END

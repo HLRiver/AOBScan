@@ -16,97 +16,130 @@
 *
 */
 
-#include "Global.h"
-#include "Log.h"
+#include "Scan.h"
 
-BOOLEAN
+SIZE_T
 NTAPI
 TrimBytes(
-    __in PCTSTR Sig,
-    __out PBYTE * Coll,
-    __out PSIZE_T CollSize
+    __in PSTR Sig,
+    __in_opt PSTR Coll,
+    __in_bcount(Coll) SIZE_T CollSize,
+    __out PBOOLEAN Selector
 )
 {
-    BOOLEAN Result = FALSE;
-    PTSTR Buffer = NULL;
+    SIZE_T Result = 0;
+    PSTR Buffer = NULL;
     SIZE_T BufferSize = 0;
-    TCHAR Single[3] = { 0 };
-    ULONG Digit = 0;
+    CHAR Single[3] = { 0 };
+    ULONG64 Digit = 0;
+    SIZE_T Index = 0;
+    ULONG Length = 0;
 
-    for (SIZE_T i = 0;
-        i < _tcslen(Sig);
-        i++) {
-        if (_istxdigit(*(Sig + i)) ||
-            *(Sig + i) == TEXT('?')) {
-            BufferSize += sizeof(TCHAR);
+    Length = strlen(Sig);
+
+    for (Index = 0;
+        Index < Length;
+        Index++) {
+        if (0 != isxdigit(*(Sig + Index)) ||
+            0 == CmpByte(
+                *(Sig + Index),
+                '?')) {
+            BufferSize++;
         }
     }
 
     if (0 != BufferSize) {
-        Buffer = malloc(BufferSize);
+#ifndef NTOS_KERNEL_RUNTIME
+        Buffer = RtlAllocateHeap(
+            RtlProcessHeap(),
+            0,
+            BufferSize);
+#else
+        Buffer = ExAllocatePool(
+            NonPagedPool,
+            BufferSize);
+#endif // !NTOS_KERNEL_RUNTIME
 
         if (NULL != Buffer) {
             RtlZeroMemory(
                 Buffer,
                 BufferSize);
 
-            for (SIZE_T i = 0;
-                i < _tcslen(Sig);
-                i++) {
-                if (_istxdigit(*(Sig + i))
-                    || *(Sig + i) == TEXT('?')) {
+            for (Index = 0;
+                Index < Length;
+                Index++) {
+                if (0 != isxdigit(*(Sig + Index)) ||
+                    0 == CmpByte(
+                        *(Sig + Index),
+                        '?')) {
                     RtlCopyMemory(
-                        Buffer + _tcslen(Buffer),
-                        Sig + i,
-                        sizeof(TCHAR) * 2);
-                    i++;
+                        Buffer + strlen(Buffer),
+                        Sig + Index,
+                        2);
+                    Index++;
                 }
             }
 
-            if (0 != BufferSize &&
-                0 == BufferSize % 2) {
-                *CollSize = BufferSize / (2 * sizeof(TCHAR));
-                *Coll = malloc(*CollSize);
+            if (0 != (BufferSize & 1)) {
+                Result = -1;
+            }
+            else {
+                if (NULL == Coll) {
+                    Result = BufferSize / 2;
+                }
+                else {
+                    Result = BufferSize / 2;
 
-                if (NULL != *Coll) {
-                    for (SIZE_T i = 0;
-                        i < BufferSize / sizeof(TCHAR);
-                        i += 2) {
-                        if (*(Buffer + i) != TEXT('?') &&
-                            *(Buffer + i + 1) != TEXT('?')) {
-                            RtlCopyMemory(
-                                Single,
-                                Buffer + i,
-                                sizeof(TCHAR) * 2);
+                    if (CollSize >= BufferSize / 2) {
+                        for (Index = 0;
+                            Index < BufferSize;
+                            Index += 2) {
+                            if (0 == CmpByte(
+                                *(Buffer + Index),
+                                '?') &&
+                                0 == CmpByte(
+                                    *(Buffer + Index + 1),
+                                    '?')) {
+                                *(Coll + Index / 2) = '?';
 
-                            Digit = _tcstoul(Single, NULL, 16);
-                            *(*Coll + i / 2) = LOBYTE(Digit);
-                        }
-                        else if (*(Buffer + i) == TEXT('?') &&
-                            *(Buffer + i + 1) == TEXT('?')) {
-                            *(*Coll + i / 2) = '?';
+                                *Selector = TRUE;
+                            }
+                            else if (0 != isxdigit(*(Buffer + Index)) &&
+                                0 != isxdigit(*(Buffer + Index + 1))) {
+                                RtlCopyMemory(
+                                    Single,
+                                    Buffer + Index,
+                                    sizeof(CHAR) * 2);
 
-                            Result = TRUE + 1;
-                        }
-                        else {
-                            // invalid sig
+                                Digit = _strtoui64(
+                                    Single,
+                                    NULL,
+                                    16);
 
-                            free(*Coll);
+                                *(Coll + Index / 2) = (CHAR)Digit;
 
-                            *Coll = NULL;
-                            *CollSize = 0;
-
-                            return FALSE;
+                                *Selector =
+                                    FALSE != *Selector ? TRUE : FALSE;
+                            }
+                            else {
+                                Result = -1;
+                            }
                         }
                     }
-
-                    if (FALSE == Result ) {
-                        Result = TRUE;
+                    else {
+                        Result = -1;
                     }
                 }
             }
 
-            free(Buffer);
+#ifndef NTOS_KERNEL_RUNTIME
+            RtlFreeHeap(
+                RtlProcessHeap(),
+                0,
+                Buffer);
+#else
+            ExFreePool(Buffer);
+#endif // !NTOS_KERNEL_RUNTIME
         }
     }
 
@@ -116,29 +149,30 @@ TrimBytes(
 SIZE_T
 NTAPI
 CompareBytes(
-    __in PBYTE Destination,
-    __in PBYTE Source,
+    __in PSTR Destination,
+    __in PSTR Source,
     __in SIZE_T Length,
     __in BOOLEAN Selector
 )
 {
-    register SIZE_T Count = 0;
+    SIZE_T Count = 0;
 
-    if (TRUE == Selector) {
-        for (Count = 0;
-            Count < Length;
-            Count++) {
-            if (*(Destination + Count) != *(Source + Count)) {
-                break;
-            }
-        }
+    if (FALSE == Selector) {
+        Count = RtlCompareMemory(
+            Destination,
+            Source,
+            Length);
     }
     else {
         for (Count = 0;
             Count < Length;
             Count++) {
-            if (*(Destination + Count) != *(Source + Count) &&
-                *(Source + Count) != '?') {
+            if (0 != CmpByte(
+                *(Destination + Count),
+                *(Source + Count)) &&
+                0 != CmpByte(
+                    *(Source + Count),
+                    '?')) {
                 break;
             }
         }
@@ -150,39 +184,66 @@ CompareBytes(
 PVOID
 NTAPI
 ScanBytes(
-    __in PBYTE Begin,
-    __in PBYTE End,
-    __in PCTSTR Sig
+    __in PSTR Begin,
+    __in PSTR End,
+    __in PSTR Sig
 )
 {
     BOOLEAN Selector = FALSE;
-    PBYTE Coll = NULL;
+    PSTR Coll = NULL;
     SIZE_T CollSize = 0;
     PVOID Result = NULL;
+    SIZE_T Index = 0;
 
-    Selector = TrimBytes(
+    CollSize = TrimBytes(
         Sig,
-        &Coll,
-        &CollSize);
+        NULL,
+        CollSize,
+        &Selector);
 
-    if (FALSE != Selector) {
-        for (SIZE_T i = 0;
-            i < End - Begin - CollSize;
-            i++) {
-            if (CompareBytes(
-                Begin + i,
+    if (-1 != CollSize) {
+#ifndef NTOS_KERNEL_RUNTIME
+        Coll = RtlAllocateHeap(
+            RtlProcessHeap(),
+            0,
+            CollSize);
+#else
+        Coll = ExAllocatePool(
+            NonPagedPool,
+            CollSize);
+#endif // !NTOS_KERNEL_RUNTIME
+
+        if (NULL != Coll) {
+            CollSize = TrimBytes(
+                Sig,
                 Coll,
                 CollSize,
-                Selector) == CollSize) {
-                Result = Begin + i;
-                break;
-            }
-        }
+                &Selector);
 
-        free(Coll);
-    }
-    else {
-        _PRINT(TEXT("invalid sig\n"));;
+            if (-1 != CollSize) {
+                for (Index = 0;
+                    Index < End - Begin - CollSize;
+                    Index++) {
+                    if (CollSize == CompareBytes(
+                        Begin + Index,
+                        Coll,
+                        CollSize,
+                        Selector)) {
+                        Result = Begin + Index;
+                        break;
+                    }
+                }
+            }
+
+#ifndef NTOS_KERNEL_RUNTIME
+            RtlFreeHeap(
+                RtlProcessHeap(),
+                0,
+                Coll);
+#else
+            ExFreePool(Coll);
+#endif // !NTOS_KERNEL_RUNTIME
+        }
     }
 
     return Result;

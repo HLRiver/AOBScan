@@ -19,9 +19,10 @@
 .686
 .XMM
 
-    .xlist
+    .XLIST
+INCLUDE KS386.INC
 INCLUDE CALLCONV.INC
-    .list
+    .LIST
 
 OPTION CASEMAP:NONE
 
@@ -29,7 +30,63 @@ _DATA$00 SEGMENT PAGE 'DATA'
 
 _DATA$00 ENDS
 
-_TEXT$00 SEGMENT ALIGN(10h) 'CODE'
+_TEXT$00 SEGMENT PAGE 'CODE'
+
+_CmpByte@8 :
+
+    mov cl, [esp + 8]
+    mov dl, [esp + 0ch]
+    cmp cl, dl
+    setnz al
+    ret
+
+PUBLIC _CmpByte@8
+
+align 20h
+
+_CmpShort@8 :
+
+    mov cx, [esp + 8]
+    mov dx, [esp + 0ch]
+    cmp cx, dx
+    setnz al
+    ret
+
+PUBLIC _CmpShort@8
+
+align 20h
+
+_CmpLong@8 :
+
+    mov ecx, [esp + 8]
+    mov edx, [esp + 0ch]
+    cmp ecx, edx
+    setnz al
+    ret
+
+PUBLIC _CmpLong@8
+
+align 20h
+
+_CmpLongLong@16 :
+
+    mov ecx, [esp + 8]
+    mov edx, [esp + 10h]
+    cmp ecx, edx
+
+    jnz @f
+    
+    mov ecx, [esp + 0ch]
+    mov edx, [esp + 14h]
+    cmp ecx, edx
+
+@@ :
+    setnz al
+    ret
+
+PUBLIC _CmpLongLong@16
+
+align 20h
 
 _TEXT$00 ENDS
 

@@ -19,20 +19,49 @@
 #ifndef _SCAN_H_
 #define _SCAN_H_
 
-BOOLEAN
-NTAPI
-TrimBytes(
-    __in PCTSTR Sig,
-    __out PBYTE * Coll,
-    __out PSIZE_T CollSize
-);
+#ifdef __cplusplus
+/* Assume C declarations for C++ */
+extern "C" {
+#endif	/* __cplusplus */
 
-PVOID
-NTAPI
-ScanBytes(
-    __in PBYTE Begin,
-    __in PBYTE End,
-    __in PCTSTR Sig
-);
+    BOOLEAN
+        NTAPI
+        CmpByte(
+            __in CHAR b1,
+            __in CHAR b2
+        );
+
+    BOOLEAN
+        NTAPI
+        CmpShort(
+            __in SHORT s1,
+            __in SHORT s2
+        );
+
+    BOOLEAN
+        NTAPI
+        CmpLong(
+            __in LONG l1,
+            __in LONG l2
+        );
+
+    BOOLEAN
+        NTAPI
+        CmpLongLong(
+            __in LONGLONG ll1,
+            __in LONGLONG ll2
+        );
+
+    PVOID
+        NTAPI
+        ScanBytes(
+            __in PSTR Begin,
+            __in PSTR End,
+            __in PSTR Sig
+        );
+
+#ifdef __cplusplus
+}
+#endif	/* __cplusplus */
 
 #endif // !_SCAN_H_
