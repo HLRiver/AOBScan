@@ -202,7 +202,7 @@ ScanBytes(
         &Selector);
 
     if (-1 != CollSize) {
-        if ((LONG_PTR)(End - Begin - CollSize) > 0) {
+        if ((LONG_PTR)(End - Begin - CollSize) >= 0) {
 #ifndef NTOS_KERNEL_RUNTIME
             Coll = RtlAllocateHeap(
                 RtlProcessHeap(),
