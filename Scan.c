@@ -202,47 +202,49 @@ ScanBytes(
         &Selector);
 
     if (-1 != CollSize) {
+        if ((LONG_PTR)(End - Begin - CollSize) > 0) {
 #ifndef NTOS_KERNEL_RUNTIME
-        Coll = RtlAllocateHeap(
-            RtlProcessHeap(),
-            0,
-            CollSize);
-#else
-        Coll = ExAllocatePool(
-            NonPagedPool,
-            CollSize);
-#endif // !NTOS_KERNEL_RUNTIME
-
-        if (NULL != Coll) {
-            CollSize = TrimBytes(
-                Sig,
-                Coll,
-                CollSize,
-                &Selector);
-
-            if (-1 != CollSize) {
-                for (Index = 0;
-                    Index < End - Begin - CollSize;
-                    Index++) {
-                    if (CollSize == CompareBytes(
-                        Begin + Index,
-                        Coll,
-                        CollSize,
-                        Selector)) {
-                        Result = Begin + Index;
-                        break;
-                    }
-                }
-            }
-
-#ifndef NTOS_KERNEL_RUNTIME
-            RtlFreeHeap(
+            Coll = RtlAllocateHeap(
                 RtlProcessHeap(),
                 0,
-                Coll);
+                CollSize);
 #else
-            ExFreePool(Coll);
+            Coll = ExAllocatePool(
+                NonPagedPool,
+                CollSize);
 #endif // !NTOS_KERNEL_RUNTIME
+
+            if (NULL != Coll) {
+                CollSize = TrimBytes(
+                    Sig,
+                    Coll,
+                    CollSize,
+                    &Selector);
+
+                if (-1 != CollSize) {
+                    for (Index = 0;
+                        Index < End - Begin - CollSize;
+                        Index++) {
+                        if (CollSize == CompareBytes(
+                            Begin + Index,
+                            Coll,
+                            CollSize,
+                            Selector)) {
+                            Result = Begin + Index;
+                            break;
+                        }
+                    }
+                }
+
+#ifndef NTOS_KERNEL_RUNTIME
+                RtlFreeHeap(
+                    RtlProcessHeap(),
+                    0,
+                    Coll);
+#else
+                ExFreePool(Coll);
+#endif // !NTOS_KERNEL_RUNTIME
+            }
         }
     }
 
