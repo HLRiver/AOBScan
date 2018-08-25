@@ -20,6 +20,7 @@
 .XMM
 
     .XLIST
+INCLUDE DEFS.INC
 INCLUDE KS386.INC
 INCLUDE CALLCONV.INC
     .LIST
@@ -34,11 +35,11 @@ _TEXT$00 SEGMENT PAGE 'CODE'
 
 _CmpByte@8 :
 
-    mov cl, [esp + 8]
-    mov dl, [esp + 0ch]
+    mov cl, [esp + 4]
+    mov dl, [esp + 8]
     cmp cl, dl
     setnz al
-    ret
+    ret 8
 
 PUBLIC _CmpByte@8
 
@@ -46,11 +47,11 @@ align 20h
 
 _CmpShort@8 :
 
-    mov cx, [esp + 8]
-    mov dx, [esp + 0ch]
+    mov cx, [esp + 4]
+    mov dx, [esp + 8]
     cmp cx, dx
     setnz al
-    ret
+    ret 8
 
 PUBLIC _CmpShort@8
 
@@ -58,11 +59,11 @@ align 20h
 
 _CmpLong@8 :
 
-    mov ecx, [esp + 8]
-    mov edx, [esp + 0ch]
+    mov ecx, [esp + 4]
+    mov edx, [esp + 8]
     cmp ecx, edx
     setnz al
-    ret
+    ret 8
 
 PUBLIC _CmpLong@8
 
@@ -70,19 +71,19 @@ align 20h
 
 _CmpLongLong@16 :
 
-    mov ecx, [esp + 8]
-    mov edx, [esp + 10h]
+    mov ecx, [esp + 4]
+    mov edx, [esp + 0ch]
     cmp ecx, edx
 
     jnz @f
     
-    mov ecx, [esp + 0ch]
-    mov edx, [esp + 14h]
+    mov ecx, [esp + 8h]
+    mov edx, [esp + 10h]
     cmp ecx, edx
 
 @@ :
     setnz al
-    ret
+    ret 10h
 
 PUBLIC _CmpLongLong@16
 
